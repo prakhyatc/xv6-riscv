@@ -89,3 +89,62 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+int
+sys_encrypt(void)
+{
+    char *path;
+    int key;
+    struct file *f;
+    struct inode *ip;
+    struct proc *curproc = myproc();
+
+    // Get arguments from user stack
+    if (argstr(0, &path) < 0 || argint(1, &key) < 0)
+        return -1;
+
+    // Open file for encryption
+    if ((f = filealloc()) == 0 || (ip = namei(path)) == 0)
+        return -1;
+
+    ilock(ip);
+    if (ip->type != T_FILE)
+    {
+        iunlockput(ip);
+        return -1;
+    }
+
+    // Call file system encryption function
+    int ret = encrypt(ip, key, curproc);
+    iunlockput(ip);
+    return ret;
+}
+
+int
+sys_decrypt(void)
+{
+    char *path;
+    int key;
+    struct file *f;
+    struct inode *ip;
+    struct proc *curproc = myproc();
+
+    // Get arguments from user stack
+    if (argstr(0, &path) < 0 || argint(1, &key) < 0)
+        return -1;
+
+    // Open file for decryption
+    if ((f = filealloc()) == 0 || (ip = namei(path)) == 0)
+        return -1;
+
+    ilock(ip);
+    if (ip->type != T_FILE)
+    {
+        iunlockput(ip);
+        return -1;
+    }
+
+    // Call file system decryption function
+    int ret = decrypt(ip, key, curproc);
+    iunlockput(ip);
+    return ret;
+}
