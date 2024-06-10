@@ -6,7 +6,9 @@ struct file {
   struct pipe *pipe; // FD_PIPE
   struct inode *ip;  // FD_INODE and FD_DEVICE
   uint off;          // FD_INODE
-  short major;       // FD_DEVICE
+  short major;      // FD_DEVICE
+  uint8 encrypted;
+  int key;
 };
 
 #define major(dev)  ((dev) >> 16 & 0xFFFF)
@@ -27,6 +29,8 @@ struct inode {
   short nlink;
   uint size;
   uint addrs[NDIRECT+1];
+  uint8 encrypted;
+  uint64 key;
 };
 
 // map major device number to device functions.

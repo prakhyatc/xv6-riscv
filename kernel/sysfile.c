@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include <stddef.h>
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -503,62 +504,96 @@ sys_pipe(void)
   }
   return 0;
 }
-int
+
+uint64
 sys_encrypt(void)
 {
-    char *path;
-    int key;
-    struct file *f;
-    struct inode *ip;
-    struct proc *curproc = myproc();
+    char pathForTheFile[MAXPATH];
+    int key = 0;
+    int fd = -1;
 
-    // Get arguments from user stack
-    if (argstr(0, &path) < 0 || argint(1, &key) < 0)
+    if (argstr(0, pathForTheFile, MAXPATH) < 0)
         return -1;
 
-    // Open file for encryption
-    if ((f = filealloc()) == 0 || (ip = namei(path)) == 0)
+    argint(1, &key);
+    struct inode *ip = namei(pathForTheFile);
+    if (ip == NULL)
         return -1;
 
-    ilock(ip);
     if (ip->type != T_FILE)
     {
-        iunlockput(ip);
+        iput(ip);
         return -1;
     }
 
-    // Call file system encryption function
-    int ret = encrypt(ip, key, curproc);
-    iunlockput(ip);
-    return ret;
+    struct file *pointerForTheFile = filealloc();
+    if (pointerForTheFile == NULL) 
+    {
+        iput(ip);
+        return -1;
+    }
+
+    pointerForTheFile->type = FD_INODE;
+    pointerForTheFile->ip = ip;
+    pointerForTheFile->off = 0;
+    pointerForTheFile->readable = 1;
+    pointerForTheFile->writable = 1;
+
+    if ((fd = fdalloc(pointerForTheFile)) < 0) 
+    {
+        fileclose(pointerForTheFile);
+        iput(ip);
+        return -1;
+    }
+
+    encrypt(fd, key);
+    myproc()->ofile[fd] = 0;
+    fileclose(pointerForTheFile);
+    return 0;
 }
 
-int
+uint64
 sys_decrypt(void)
 {
-    char *path;
-    int key;
-    struct file *f;
-    struct inode *ip;
-    struct proc *curproc = myproc();
-
-    // Get arguments from user stack
-    if (argstr(0, &path) < 0 || argint(1, &key) < 0)
+    char pathForTheFile[MAXPATH];
+    int key = 0;
+    int fd = -1; 
+    if (argstr(0, pathForTheFile, MAXPATH) < 0)
         return -1;
 
-    // Open file for decryption
-    if ((f = filealloc()) == 0 || (ip = namei(path)) == 0)
+    argint(1, &key);
+    struct inode *ip = namei(pathForTheFile);
+    if (ip == NULL)
         return -1;
 
-    ilock(ip);
     if (ip->type != T_FILE)
     {
-        iunlockput(ip);
+        iput(ip);
         return -1;
     }
 
-    // Call file system decryption function
-    int ret = decrypt(ip, key, curproc);
-    iunlockput(ip);
-    return ret;
+    struct file *pointerForTheFile = filealloc();
+    if (pointerForTheFile == NULL) 
+    {
+        iput(ip);
+        return -1;
+    }
+
+    pointerForTheFile->type = FD_INODE;
+    pointerForTheFile->ip = ip;
+    pointerForTheFile->off = 0;
+    pointerForTheFile->readable = 1;
+    pointerForTheFile->writable = 1;
+
+    if ((fd = fdalloc(pointerForTheFile)) < 0) 
+    {
+        fileclose(pointerForTheFile);
+        iput(ip); 
+        return -1;
+    }
+
+    decrypt(fd, key);
+    myproc()->ofile[fd] = 0;
+    fileclose(pointerForTheFile);
+    return 0;
 }

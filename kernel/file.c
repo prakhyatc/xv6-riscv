@@ -13,6 +13,78 @@
 #include "stat.h"
 #include "proc.h"
 
+void encrypt(int fd, int key) 
+{
+    struct file *pointerForTheFile = myproc()->ofile[fd];
+    if (!pointerForTheFile)
+        return;
+
+    ilock(pointerForTheFile->ip);
+
+    char bufferWeHave[BSIZE];
+    int noOfBytesToRead;
+    uint off = 0;
+
+    while ((noOfBytesToRead = readi(pointerForTheFile->ip, pointerForTheFile->off, (uint64)bufferWeHave, off, BSIZE)) > 0) 
+    {
+        for (int i = 0; i < noOfBytesToRead; i++) 
+        {
+            bufferWeHave[i] ^= key;
+        }
+        begin_op();
+        if (writei(pointerForTheFile->ip, pointerForTheFile->off, (uint64)bufferWeHave, off, noOfBytesToRead) != noOfBytesToRead) 
+        {
+            iunlock(pointerForTheFile->ip);
+            end_op();
+            return;
+        }
+        end_op();
+        off += noOfBytesToRead;
+    }
+
+    pointerForTheFile->ip->encrypted = 1;
+    begin_op();
+    iupdate(pointerForTheFile->ip);
+    end_op();
+    iunlock(pointerForTheFile->ip); 
+}
+
+void decrypt(int fd, int key) 
+{
+    struct file *pointerForTheFile = myproc()->ofile[fd]; 
+    if (!pointerForTheFile)
+        return;
+
+    ilock(pointerForTheFile->ip);
+
+    char bufferWeHave[BSIZE];
+    int noOfBytesToRead;
+    uint off = 0;
+
+    while ((noOfBytesToRead = readi(pointerForTheFile->ip, pointerForTheFile->off, (uint64)bufferWeHave, off, BSIZE)) > 0) 
+    {
+        for (int i = 0; i < noOfBytesToRead; i++) 
+        {
+            bufferWeHave[i] ^= key; 
+        }
+        begin_op();
+        if (writei(pointerForTheFile->ip, pointerForTheFile->off, (uint64)bufferWeHave, off, noOfBytesToRead) != noOfBytesToRead) 
+        {
+            iunlock(pointerForTheFile->ip);
+            end_op();
+            return;
+        }
+        end_op();
+        off += noOfBytesToRead;
+    }
+
+    pointerForTheFile->ip->encrypted = 0;
+    begin_op();
+    iupdate(pointerForTheFile->ip);
+    end_op();
+    iunlock(pointerForTheFile->ip);
+}
+
 struct devsw devsw[NDEV];
 struct {
   struct spinlock lock;

@@ -128,8 +128,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_close]   sys_encrypt,
-[SYS_close]   sys_decrypt,
+[SYS_encrypt]   sys_encrypt,
+[SYS_decrypt]   sys_decrypt,
 };
 
 void

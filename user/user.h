@@ -22,7 +22,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-
+int encrypt(const char *path, uint8 key);
+int decrypt(const char *path, uint8 key);
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
@@ -39,5 +40,3 @@ void free(void*);
 int atoi(const char*);
 int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);
-int encrypt(char *path, int key);
-int decrypt(char *path, int key);
